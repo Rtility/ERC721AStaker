@@ -4,7 +4,7 @@ pragma solidity 0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./IERC721AQueryable.sol";
+import "./interfaces/IERC721AQueryable.sol";
 
 error WrongOwner();
 error TokenIsBurned();
@@ -24,12 +24,16 @@ contract NFTStaker {
 
     address public immutable coin;
     address public immutable nft;
-    uint256 public immutable pricePerSec;
+    uint256 public immutable prizePerSec;
 
-    constructor(address coin_, address nft_, uint256 pricePerSec_) {
+    constructor(
+        address coin_,
+        address nft_,
+        uint256 prizePerSec_
+    ) {
         coin = coin_;
         nft = nft_;
-        pricePerSec = pricePerSec_;
+        prizePerSec = prizePerSec_ * 1 ether;
     }
 
     function stake(uint256 tokenId) external {
@@ -63,8 +67,16 @@ contract NFTStaker {
         if (owner.addr != msg.sender) revert WrongOwner();
         if (owner.startTimestamp != stakeData[tokenId].startTimestamp) revert TokenIsTransferedOrBurnedBefore();
 
-        uint256 amount = uint256(currentTimestamp - stakeData[tokenId].lastHarvestTimestamp) * pricePerSec;
+        uint256 amount = uint256(currentTimestamp - stakeData[tokenId].lastHarvestTimestamp) * prizePerSec;
 
         IERC20(coin).safeTransfer(msg.sender, amount);
+    }
+
+    function getPrize(uint256 tokenId) external view returns (uint256) {
+        uint64 currentTimestamp = uint64(block.timestamp);
+
+        uint256 amount = uint256(currentTimestamp - stakeData[tokenId].lastHarvestTimestamp) * prizePerSec;
+
+        return amount;
     }
 }
