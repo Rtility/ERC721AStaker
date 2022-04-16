@@ -1,4 +1,4 @@
-# 🚧 Work In Progress: ERC721AStaker
+# 🚧 Work in Progress: ERC721AStaker
 
 ## TODO:
 - [ ] stake/harvest multiple tokenIds  
