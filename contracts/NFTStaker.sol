@@ -15,13 +15,13 @@ error TokenIsMoved();
 contract NFTStaker {
     using SafeERC20 for IERC20;
 
-    struct StakesInfo {
+    struct StakedToken {
         address owner;
         uint64 startTimestamp;
         uint64 lastHarvestTimestamp;
     }
 
-    mapping(uint256 => StakesInfo) public stakeData;
+    mapping(uint256 => StakedToken) public stakes;
 
     address public immutable coin;
     address public immutable nft;
@@ -38,30 +38,30 @@ contract NFTStaker {
     }
 
     function stake(uint256 tokenId) external {
-        IERC721AQueryable token = IERC721AQueryable(nft);
+        IERC721AQueryable nftContract = IERC721AQueryable(nft);
+        IERC721AQueryable.TokenOwnership memory currentOwnership = nftContract.explicitOwnershipOf(tokenId);
 
-        IERC721AQueryable.TokenOwnership memory owner = token.explicitOwnershipOf(tokenId);
-
-        if (owner.addr != msg.sender) revert WrongOwner();
-        if (owner.burned) revert TokenIsBurned();
+        if (currentOwnership.addr != msg.sender) revert WrongOwner();
+        if (currentOwnership.burned) revert TokenIsBurned();
 
         // revert if already staked
-        if (stakeData[tokenId].owner == msg.sender) {
-            if (stakeData[tokenId].startTimestamp == owner.startTimestamp) revert AlreadyStaked();
+        if (stakes[tokenId].owner == msg.sender) {
+            // TODO: check if this is needed
+            if (stakes[tokenId].startTimestamp == currentOwnership.startTimestamp) revert AlreadyStaked();
         }
 
-        stakeData[tokenId].owner = msg.sender;
-        stakeData[tokenId].startTimestamp = owner.startTimestamp;
-        stakeData[tokenId].lastHarvestTimestamp = uint64(block.timestamp);
+        stakes[tokenId].owner = msg.sender;
+        stakes[tokenId].startTimestamp = currentOwnership.startTimestamp;
+        stakes[tokenId].lastHarvestTimestamp = uint64(block.timestamp);
     }
 
     function harvest(uint256 tokenId) external {
-        StakesInfo memory stakedToken = stakeData[tokenId];
+        StakedToken memory stakedToken = stakes[tokenId];
 
         if (stakedToken.owner != msg.sender) revert WrongOwner();
 
         uint64 currentTimestamp = uint64(block.timestamp);
-
+        stakes[tokenId].lastHarvestTimestamp = currentTimestamp;
 
         IERC721AQueryable nftContract = IERC721AQueryable(nft);
         uint64 currentOwnershipTimestamp = nftContract.explicitOwnershipOf(tokenId).startTimestamp;
@@ -74,14 +74,12 @@ contract NFTStaker {
         }
 
         IERC20(coin).safeTransfer(msg.sender, amount);
-
-        stakeData[tokenId].lastHarvestTimestamp = currentTimestamp;
     }
 
     function getPrize(uint256 tokenId) external view returns (uint256) {
         uint64 currentTimestamp = uint64(block.timestamp);
 
-        uint256 amount = uint256(currentTimestamp - stakeData[tokenId].lastHarvestTimestamp) * prizePerSec;
+        uint256 amount = uint256(currentTimestamp - stakes[tokenId].lastHarvestTimestamp) * prizePerSec;
 
         return amount;
     }

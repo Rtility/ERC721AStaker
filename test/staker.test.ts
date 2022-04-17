@@ -53,7 +53,7 @@ describe('Staker', () => {
       it('should stake token', async () => {
         const tokenId = 3;
         await staker.stake(tokenId);
-        const stakeData = await staker.stakeData(3);
+        const stakeData = await staker.stakes(3);
         expect(stakeData.lastHarvestTimestamp).not.eq(0);
         expect(stakeData.owner).to.eq(owner.address);
       });
