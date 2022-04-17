@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import type { Coin, NFT, NFTStaker } from '../typechain-types';
 import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { deployContract } from './helper';
+import { deployContract, increaseBlockTimestamp } from './helper';
 
 describe('Staker', () => {
   let coin: Coin;
@@ -62,16 +62,21 @@ describe('Staker', () => {
     context('harvest', () => {
       it('should harvest token', async () => {
         const tokenId = 3;
+        const waitSec = 60;
 
         await staker.stake(tokenId);
 
         const balanceBefore = await coin.balanceOf(owner.address);
+        // sanity check
+        expect(await coin.balanceOf(owner.address)).to.eq(0);
+
+        await increaseBlockTimestamp(waitSec);
 
         await staker.harvest(tokenId);
 
         const balanceAfter = await coin.balanceOf(owner.address);
 
-        // expect(balanceAfter.sub(balanceBefore)).to.eq(prize);
+        expect(balanceAfter.sub(balanceBefore)).to.eq(prizePerSec.mul(waitSec + 1));
       });
     });
   });

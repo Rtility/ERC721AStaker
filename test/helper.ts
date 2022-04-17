@@ -8,4 +8,10 @@ async function deployContract(contractName: string, ...callData: any): Promise<a
   return contract;
 }
 
-export { deployContract };
+// increase block timestamp function
+async function increaseBlockTimestamp(increase: number): Promise<void> {
+  await ethers.provider.send('evm_increaseTime', [increase]);
+  await ethers.provider.send('evm_mine', []);
+}
+
+export { deployContract, increaseBlockTimestamp };
