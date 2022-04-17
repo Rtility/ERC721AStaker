@@ -5,6 +5,7 @@ pragma solidity 0.8.13;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC721AQueryable.sol";
+import "hardhat/console.sol";
 
 error WrongOwner();
 error TokenIsBurned();
@@ -33,7 +34,7 @@ contract NFTStaker {
     ) {
         coin = coin_;
         nft = nft_;
-        prizePerSec = prizePerSec_ * 1 ether;
+        prizePerSec = prizePerSec_;
     }
 
     function stake(uint256 tokenId) external {
@@ -59,8 +60,6 @@ contract NFTStaker {
 
         uint64 currentTimestamp = uint64(block.timestamp);
 
-        stakeData[tokenId].lastHarvestTimestamp = currentTimestamp;
-
         IERC721AQueryable token = IERC721AQueryable(nft);
         IERC721AQueryable.TokenOwnership memory owner = token.explicitOwnershipOf(tokenId);
 
@@ -70,6 +69,8 @@ contract NFTStaker {
         uint256 amount = uint256(currentTimestamp - stakeData[tokenId].lastHarvestTimestamp) * prizePerSec;
 
         IERC20(coin).safeTransfer(msg.sender, amount);
+
+        stakeData[tokenId].lastHarvestTimestamp = currentTimestamp;
     }
 
     function getPrize(uint256 tokenId) external view returns (uint256) {
