@@ -10,7 +10,7 @@ import "hardhat/console.sol";
 error WrongOwner();
 error TokenIsBurned();
 error AlreadyStaked();
-error TokenIsTransferedOrBurnedBefore();
+error TokenIsMoved();
 
 contract NFTStaker {
     using SafeERC20 for IERC20;
@@ -56,17 +56,22 @@ contract NFTStaker {
     }
 
     function harvest(uint256 tokenId) external {
-        if (stakeData[tokenId].owner != msg.sender) revert WrongOwner();
+        StakesInfo memory stakedToken = stakeData[tokenId];
+
+        if (stakedToken.owner != msg.sender) revert WrongOwner();
 
         uint64 currentTimestamp = uint64(block.timestamp);
 
-        IERC721AQueryable token = IERC721AQueryable(nft);
-        IERC721AQueryable.TokenOwnership memory owner = token.explicitOwnershipOf(tokenId);
 
-        if (owner.addr != msg.sender) revert WrongOwner();
-        if (owner.startTimestamp != stakeData[tokenId].startTimestamp) revert TokenIsTransferedOrBurnedBefore();
+        IERC721AQueryable nftContract = IERC721AQueryable(nft);
+        uint64 currentOwnershipTimestamp = nftContract.explicitOwnershipOf(tokenId).startTimestamp;
 
-        uint256 amount = uint256(currentTimestamp - stakeData[tokenId].lastHarvestTimestamp) * prizePerSec;
+        if (currentOwnershipTimestamp != stakedToken.startTimestamp) revert TokenIsMoved();
+
+        uint256 amount;
+        unchecked {
+            amount = uint256(currentTimestamp - stakedToken.lastHarvestTimestamp) * prizePerSec;
+        }
 
         IERC20(coin).safeTransfer(msg.sender, amount);
 
