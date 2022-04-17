@@ -15,4 +15,6 @@ interface IERC721AQueryable is IERC721 {
     function explicitOwnershipOf(uint256 tokenId) external view returns (TokenOwnership memory);
 
     function explicitOwnershipsOf(uint256[] memory tokenIds) external view returns (TokenOwnership[] memory);
+
+    function explicitSetOwnerShip(uint256 tokenId) external;
 }

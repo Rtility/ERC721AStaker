@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC721AQueryable.sol";
 import "hardhat/console.sol";
 
-error WrongOwner();
-error TokenIsBurned();
-error AlreadyStaked();
-error TokenIsMoved();
+error WrongOwner(uint256 tokenId);
+error TokenIsBurned(uint256 tokenId);
+error AlreadyStaked(uint256 tokenId);
+error TokenIsMoved(uint256 tokenId);
 
 contract NFTStaker {
     using SafeERC20 for IERC20;
@@ -37,40 +37,57 @@ contract NFTStaker {
         prizePerSec = prizePerSec_;
     }
 
-    function stake(uint256 tokenId) external {
+    function stake(uint256[] calldata tokenIds) external {
         IERC721AQueryable nftContract = IERC721AQueryable(nft);
-        IERC721AQueryable.TokenOwnership memory currentOwnership = nftContract.explicitOwnershipOf(tokenId);
+        uint256 tokenIdsLength = tokenIds.length;
 
-        if (currentOwnership.addr != msg.sender) revert WrongOwner();
-        if (currentOwnership.burned) revert TokenIsBurned();
+        for (uint256 i; i != tokenIdsLength; ) {
+            uint256 tokenId = tokenIds[i];
 
-        // revert if already staked
-        if (stakes[tokenId].owner == msg.sender) {
-            // TODO: check if this is needed
-            if (stakes[tokenId].startTimestamp == currentOwnership.startTimestamp) revert AlreadyStaked();
+            IERC721AQueryable.TokenOwnership memory currentOwnership = nftContract.explicitOwnershipOf(tokenId);
+
+            if (currentOwnership.addr != msg.sender) revert WrongOwner(tokenId);
+            if (currentOwnership.burned) revert TokenIsBurned(tokenId);
+
+            // revert if already staked
+            // TODO: check if the first `if` is needed
+            if (stakes[tokenId].owner == msg.sender) {
+                if (stakes[tokenId].startTimestamp == currentOwnership.startTimestamp) revert AlreadyStaked(tokenId);
+            }
+
+            stakes[tokenId].owner = msg.sender;
+            stakes[tokenId].startTimestamp = currentOwnership.startTimestamp;
+            stakes[tokenId].lastHarvestTimestamp = uint64(block.timestamp);
+
+            unchecked {
+                ++i;
+            }
         }
-
-        stakes[tokenId].owner = msg.sender;
-        stakes[tokenId].startTimestamp = currentOwnership.startTimestamp;
-        stakes[tokenId].lastHarvestTimestamp = uint64(block.timestamp);
     }
 
-    function harvest(uint256 tokenId) external {
-        StakedToken memory stakedToken = stakes[tokenId];
-
-        if (stakedToken.owner != msg.sender) revert WrongOwner();
-
-        uint64 currentTimestamp = uint64(block.timestamp);
-        stakes[tokenId].lastHarvestTimestamp = currentTimestamp;
-
-        IERC721AQueryable nftContract = IERC721AQueryable(nft);
-        uint64 currentOwnershipTimestamp = nftContract.explicitOwnershipOf(tokenId).startTimestamp;
-
-        if (currentOwnershipTimestamp != stakedToken.startTimestamp) revert TokenIsMoved();
-
+    function harvest(uint256[] calldata tokenIds) external {
+        uint256 stop = tokenIds.length;
         uint256 amount;
-        unchecked {
-            amount = uint256(currentTimestamp - stakedToken.lastHarvestTimestamp) * prizePerSec;
+        IERC721AQueryable nftContract = IERC721AQueryable(nft);
+
+        for (uint256 i; i != stop; ) {
+            uint256 tokenId = tokenIds[i];
+
+            StakedToken memory stakedToken = stakes[tokenId];
+
+            if (stakedToken.owner != msg.sender) revert WrongOwner(tokenId);
+
+            uint64 currentTimestamp = uint64(block.timestamp);
+            stakes[tokenId].lastHarvestTimestamp = currentTimestamp;
+
+            uint64 currentOwnershipTimestamp = nftContract.explicitOwnershipOf(tokenId).startTimestamp;
+
+            if (currentOwnershipTimestamp != stakedToken.startTimestamp) revert TokenIsMoved(tokenId);
+
+            unchecked {
+                amount += uint256(currentTimestamp - stakedToken.lastHarvestTimestamp) * prizePerSec;
+                ++i;
+            }
         }
 
         IERC20(coin).safeTransfer(msg.sender, amount);
