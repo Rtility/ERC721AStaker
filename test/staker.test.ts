@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import type { Coin, NFT, NFTStaker } from '../typechain-types';
 import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { deployContract, increaseBlockTimestamp } from './helper';
+import { deployContract, increaseBlockTimestamp, lastBlockTimestamp } from './helper';
 
 describe('Staker', () => {
   let coin: Coin;
@@ -59,7 +59,7 @@ describe('Staker', () => {
         await staker.stake(tokenIds);
 
         // get last block time stamp
-        const blockTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+        const blockTimestamp = await lastBlockTimestamp();
 
         for (const tokenId of tokenIds) {
           // get tokenId timestamp
@@ -84,24 +84,53 @@ describe('Staker', () => {
     context('harvest', () => {
       let balanceBefore: BigNumber;
       const waitSec = 60;
+      let stakeTimeStamp: number;
 
       beforeEach(async () => {
-        await staker.stake(stakedTokenIds);
+        // stake with gaps
+        await staker.stake([1]);
+        await increaseBlockTimestamp(10);
+        await staker.stake([3, 4]);
+        await increaseBlockTimestamp(1000);
+        await staker.stake([2, 5]);
+
         balanceBefore = await coin.balanceOf(owner.address);
 
+        // get last block time stamp
+        stakeTimeStamp = await lastBlockTimestamp();
+
         await increaseBlockTimestamp(waitSec);
+
+        // sanity check
+        expect(await lastBlockTimestamp()).to.be.eq(stakeTimeStamp + waitSec);
       });
 
       const harvest = async (tokenIds: number[]): Promise<void> => {
+        // get lastHarvestTimestamp for each token
+        let lastHarvestTimestamps: any = {};
+        for (const tokenId of tokenIds) {
+          const stakeData = await staker.stakes(tokenId);
+          lastHarvestTimestamps[tokenId] = stakeData.lastHarvestTimestamp.toNumber();
+        }
+
         await staker.harvest(tokenIds);
+        const blockTimestamp = await lastBlockTimestamp();
 
         const balanceAfter = await coin.balanceOf(owner.address);
-        expect(balanceAfter.sub(balanceBefore)).to.eq(prizePerSec.mul(waitSec + 1).mul(tokenIds.length));
+
+        // calculate prize
+        let prize = BigNumber.from(0);
+        for (const tokenId of tokenIds) {
+          const tokenIdLastHarvestTimestamp = lastHarvestTimestamps[tokenId];
+          prize = prize.add(prizePerSec.mul(blockTimestamp - tokenIdLastHarvestTimestamp));
+        }
+
+        expect(balanceAfter.sub(balanceBefore)).to.eq(prize);
 
         // check lastHarvestTimestamp for each tokenId
         for (const tokenId of tokenIds) {
           const stakeData = await staker.stakes(tokenId);
-          expect(stakeData.lastHarvestTimestamp).to.eq((await ethers.provider.getBlock('latest')).timestamp);
+          expect(stakeData.lastHarvestTimestamp).to.eq(blockTimestamp);
         }
       };
 

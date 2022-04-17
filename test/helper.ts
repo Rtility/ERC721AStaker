@@ -14,4 +14,8 @@ async function increaseBlockTimestamp(increase: number): Promise<void> {
   await ethers.provider.send('evm_mine', []);
 }
 
-export { deployContract, increaseBlockTimestamp };
+const lastBlockTimestamp = async (): Promise<number> => {
+  return (await ethers.provider.getBlock('latest')).timestamp;
+};
+
+export { deployContract, increaseBlockTimestamp, lastBlockTimestamp };
