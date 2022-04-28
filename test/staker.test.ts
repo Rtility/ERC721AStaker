@@ -141,6 +141,12 @@ describe('Staker', () => {
       it('should harvest multiple tokens', async () => {
         await harvest(stakedTokenIds);
       });
+
+      it('should fail if funds are not enough', async () => {
+        // withdraw all funds
+        await staker.withdrawERC20(coin.address, ownerCoinCount);
+        await expect(staker.harvest(stakedTokenIds)).to.be.revertedWith('NotEnoughFundsInTheContract');
+      });
     });
   });
 });

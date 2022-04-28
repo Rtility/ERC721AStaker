@@ -5,15 +5,17 @@ pragma solidity 0.8.13;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC721AQueryable.sol";
-import "hardhat/console.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-error WrongOwner(uint256 tokenId);
-error TokenIsBurned(uint256 tokenId);
-error AlreadyStaked(uint256 tokenId);
-error TokenIsMoved(uint256 tokenId);
-
-contract NFTStaker {
+contract NFTStaker is Ownable {
     using SafeERC20 for IERC20;
+
+    error WrongOwner(uint256 tokenId);
+    error TokenIsBurned(uint256 tokenId);
+    error AlreadyStaked(uint256 tokenId);
+    error TokenIsMoved(uint256 tokenId);
+    error NotEnoughFundsInTheContract();
+    error WithdrawFailed();
 
     struct StakedToken {
         address owner;
@@ -90,6 +92,10 @@ contract NFTStaker {
             }
         }
 
+        // check contract balance
+        uint256 balance = IERC20(coin).balanceOf(address(this));
+        if (balance < amount) revert NotEnoughFundsInTheContract();
+
         IERC20(coin).safeTransfer(msg.sender, amount);
     }
 
@@ -99,5 +105,16 @@ contract NFTStaker {
         uint256 amount = uint256(currentTimestamp - stakes[tokenId].lastHarvestTimestamp) * prizePerSec;
 
         return amount;
+    }
+
+    /// Withdraw funds
+    function withdraw() external onlyOwner {
+        (bool success, ) = msg.sender.call{value: address(this).balance}("");
+        if (!success) revert WithdrawFailed();
+    }
+
+    /// Withdraw ERC20
+    function withdrawERC20(IERC20 token_, uint256 amount) external onlyOwner {
+        token_.safeTransfer(msg.sender, amount);
     }
 }
