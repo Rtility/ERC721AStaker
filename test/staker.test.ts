@@ -43,6 +43,7 @@ describe('Staker', () => {
 
   describe('staker', () => {
     const stakedTokenIds = [1, 2, 3, 4, 5];
+    const notStakedTokenIds = [6, 7, 8, 9, 10];
 
     beforeEach(async () => {
       // transfer coins from owner to staker contract
@@ -78,6 +79,26 @@ describe('Staker', () => {
 
       it('should stake multiple tokens', async () => {
         await stake(stakedTokenIds);
+      });
+
+      it('should revert when already staked', async () => {
+        await staker.stake(stakedTokenIds);
+        await expect(staker.stake([1])).to.be.revertedWith('AlreadyStaked(1)');
+        await expect(staker.stake(stakedTokenIds)).to.be.revertedWith('AlreadyStaked(1)');
+        await expect(staker.stake([6, 7, 1])).to.be.revertedWith('AlreadyStaked(1)');
+      });
+
+      it('should not revert if previously staked but not staked now', async () => {
+        await staker.stake(stakedTokenIds);
+
+        const testTokenId = 1;
+
+        await nft.transferFrom(owner.address, addrs[5].address, testTokenId);
+        // sanity check
+        expect(await nft.ownerOf(testTokenId)).to.eq(addrs[5].address);
+        await nft.connect(addrs[5]).transferFrom(addrs[5].address, owner.address, testTokenId);
+
+        await stake([1]);
       });
     });
 
@@ -146,6 +167,13 @@ describe('Staker', () => {
         // withdraw all funds
         await staker.withdrawERC20(coin.address, ownerCoinCount);
         await expect(staker.harvest(stakedTokenIds)).to.be.revertedWith('NotEnoughFundsInTheContract');
+      });
+
+      it('should fail if token is not staked', async () => {
+        await expect(staker.harvest([notStakedTokenIds[0]])).to.be.revertedWith('WrongOwner(6)');
+        await expect(staker.harvest(notStakedTokenIds)).to.be.revertedWith('WrongOwner(6)');
+        await expect(staker.harvest([1, 2, 3, 6])).to.be.revertedWith('WrongOwner(6)');
+        await expect(staker.harvest([6, 1, 2, 3])).to.be.revertedWith('WrongOwner(6)');
       });
     });
   });

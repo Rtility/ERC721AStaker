@@ -16,6 +16,7 @@ contract NFTStaker is Ownable {
     error TokenIsMoved(uint256 tokenId);
     error NotEnoughFundsInTheContract();
     error WithdrawFailed();
+    error ContractsNotAllowed();
 
     struct StakedToken {
         address owner;
@@ -39,7 +40,13 @@ contract NFTStaker is Ownable {
         prizePerSec = prizePerSec_;
     }
 
-    function stake(uint256[] calldata tokenIds) external {
+    /// no contract 
+    modifier noContract() {
+        if (tx.origin != msg.sender) revert ContractsNotAllowed();
+        _;
+    }
+
+    function stake(uint256[] calldata tokenIds) external noContract {
         IERC721AQueryable nftContract = IERC721AQueryable(nft);
         uint256 tokenIdsLength = tokenIds.length;
 
@@ -67,7 +74,7 @@ contract NFTStaker is Ownable {
         }
     }
 
-    function harvest(uint256[] calldata tokenIds) external {
+    function harvest(uint256[] calldata tokenIds) external noContract {
         uint256 stop = tokenIds.length;
         uint256 amount;
         IERC721AQueryable nftContract = IERC721AQueryable(nft);
