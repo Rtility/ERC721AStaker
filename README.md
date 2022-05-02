@@ -1,4 +1,5 @@
-# 🚧 ERC721AStaker, a soft staking contract for ERC721AQueryable
+# 🚧 ERC721AStaker
+ A soft staking contract for ERC721AQueryable.
 
 # ⚠️ Disclaimer
 
