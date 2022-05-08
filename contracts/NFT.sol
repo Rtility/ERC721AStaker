@@ -8,7 +8,7 @@ contract NFT is ERC721AQueryable {
     constructor() ERC721A("NFT", "NFT") {}
 
     function mint(uint256 quantity) external {
-        _mint(msg.sender, quantity, "", false);
+        _mint(msg.sender, quantity);
     }
 
     function _startTokenId() internal pure override returns (uint256) {
