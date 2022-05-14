@@ -20,8 +20,8 @@ contract NFTStaker is Ownable {
 
     struct StakedToken {
         address owner;
-        uint64 startTimestamp;
-        uint64 lastHarvestTimestamp;
+        uint48 startTimestamp;
+        uint48 lastHarvestTimestamp;
     }
 
     mapping(uint256 => StakedToken) public stakes;
@@ -50,23 +50,21 @@ contract NFTStaker is Ownable {
         IERC721AQueryable nftContract = IERC721AQueryable(nft);
         uint256 tokenIdsLength = tokenIds.length;
 
-        for (uint256 i; i != tokenIdsLength; ) {
-            uint256 tokenId = tokenIds[i];
+        unchecked {
+            for (uint256 i; i != tokenIdsLength; ++i) {
+                uint256 tokenId = tokenIds[i];
 
-            IERC721AQueryable.TokenOwnership memory currentOwnership = nftContract.explicitOwnershipOf(tokenId);
+                IERC721AQueryable.TokenOwnership memory currentOwnership = nftContract.explicitOwnershipOf(tokenId);
 
-            if (currentOwnership.addr != msg.sender) revert WrongOwner(tokenId);
-            if (currentOwnership.burned) revert TokenIsBurned(tokenId);
+                if (currentOwnership.addr != msg.sender) revert WrongOwner(tokenId);
+                if (currentOwnership.burned) revert TokenIsBurned(tokenId);
 
-            // revert if already staked
-            if (stakes[tokenId].startTimestamp == currentOwnership.startTimestamp) revert AlreadyStaked(tokenId);
+                // revert if already staked
+                if (stakes[tokenId].startTimestamp == currentOwnership.startTimestamp) revert AlreadyStaked(tokenId);
 
-            stakes[tokenId].owner = msg.sender;
-            stakes[tokenId].startTimestamp = currentOwnership.startTimestamp;
-            stakes[tokenId].lastHarvestTimestamp = uint64(block.timestamp);
-
-            unchecked {
-                ++i;
+                stakes[tokenId].owner = msg.sender;
+                stakes[tokenId].startTimestamp = uint48(currentOwnership.startTimestamp);
+                stakes[tokenId].lastHarvestTimestamp = uint48(block.timestamp);
             }
         }
     }
@@ -76,23 +74,23 @@ contract NFTStaker is Ownable {
         uint256 amount;
         IERC721AQueryable nftContract = IERC721AQueryable(nft);
 
-        for (uint256 i; i != stop; ) {
-            uint256 tokenId = tokenIds[i];
+        unchecked {
+            for (uint256 i; i != stop; ++i) {
+                uint256 tokenId = tokenIds[i];
 
-            StakedToken memory stakedToken = stakes[tokenId];
+                StakedToken memory stakedToken = stakes[tokenId];
 
-            if (stakedToken.owner != msg.sender) revert WrongOwner(tokenId);
+                if (stakedToken.owner != msg.sender) revert WrongOwner(tokenId);
 
-            uint64 currentTimestamp = uint64(block.timestamp);
-            stakes[tokenId].lastHarvestTimestamp = currentTimestamp;
+                uint48 currentTimestamp = uint48(block.timestamp);
 
-            uint64 currentOwnershipTimestamp = nftContract.explicitOwnershipOf(tokenId).startTimestamp;
+                stakes[tokenId].lastHarvestTimestamp = currentTimestamp;
 
-            if (currentOwnershipTimestamp != stakedToken.startTimestamp) revert TokenIsMoved(tokenId);
+                uint48 currentOwnershipTimestamp = uint48(nftContract.explicitOwnershipOf(tokenId).startTimestamp);
 
-            unchecked {
+                if (currentOwnershipTimestamp != stakedToken.startTimestamp) revert TokenIsMoved(tokenId);
+
                 amount += uint256(currentTimestamp - stakedToken.lastHarvestTimestamp) * prizePerSec;
-                ++i;
             }
         }
 

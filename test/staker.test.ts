@@ -151,7 +151,7 @@ describe('Staker', () => {
         let lastHarvestTimestamps: any = {};
         for (const tokenId of tokenIds) {
           const stakeData = await staker.stakes(tokenId);
-          lastHarvestTimestamps[tokenId] = stakeData.lastHarvestTimestamp.toNumber();
+          lastHarvestTimestamps[tokenId] = stakeData.lastHarvestTimestamp;
         }
 
         await staker.harvest(tokenIds);
