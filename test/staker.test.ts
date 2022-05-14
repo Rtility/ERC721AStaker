@@ -89,16 +89,36 @@ describe('Staker', () => {
       });
 
       it('should not revert if previously staked but not staked now', async () => {
-        await staker.stake(stakedTokenIds);
-
         const testTokenId = 1;
+
+        await staker.stake([testTokenId]);
 
         await nft.transferFrom(owner.address, addrs[5].address, testTokenId);
         // sanity check
         expect(await nft.ownerOf(testTokenId)).to.eq(addrs[5].address);
+
         await nft.connect(addrs[5]).transferFrom(addrs[5].address, owner.address, testTokenId);
 
         await stake([1]);
+      });
+
+      it('should revert if not owner of the token', async () => {
+        await expect(staker.connect(addrs[5]).stake([1])).to.be.revertedWith('WrongOwner(1)');
+
+        // mint some token for adrs 5
+        await nft.connect(addrs[5]).mint(5);
+        // sanity check
+        expect(await nft.ownerOf(11)).to.be.eq(addrs[5].address);
+
+        await expect(staker.connect(addrs[5]).stake([1, 11, 12, 13, 14])).to.be.revertedWith('WrongOwner(1)');
+        await expect(staker.connect(addrs[5]).stake([11, 1, 12, 13, 14])).to.be.revertedWith('WrongOwner(1)');
+      });
+
+      it('should revert if token is burned', async () => {
+        const tokenId = 1;
+        // burn
+        await nft.burn(tokenId);
+        await expect(staker.stake([tokenId])).to.be.revertedWith('TokenIsBurned(1)');
       });
     });
 
@@ -170,10 +190,35 @@ describe('Staker', () => {
       });
 
       it('should fail if token is not staked', async () => {
-        await expect(staker.harvest([notStakedTokenIds[0]])).to.be.revertedWith('WrongOwner(6)');
-        await expect(staker.harvest(notStakedTokenIds)).to.be.revertedWith('WrongOwner(6)');
+        await expect(staker.harvest([6])).to.be.revertedWith('WrongOwner(6)');
+        await expect(staker.harvest([6, 7, 8, 9, 10])).to.be.revertedWith('WrongOwner(6)');
         await expect(staker.harvest([1, 2, 3, 6])).to.be.revertedWith('WrongOwner(6)');
         await expect(staker.harvest([6, 1, 2, 3])).to.be.revertedWith('WrongOwner(6)');
+      });
+
+      it('should fail if token is burned', async () => {
+        await nft.burn(1);
+
+        await expect(staker.harvest([1])).to.be.revertedWith('TokenIsMoved(1)');
+        await expect(staker.harvest([1, 2, 3, 4, 5])).to.be.revertedWith('TokenIsMoved(1)');
+        await expect(staker.harvest([2, 1, 3, 4, 5])).to.be.revertedWith('TokenIsMoved(1)');
+      });
+
+      it('should fail if token is transfered out', async () => {
+        await nft.transferFrom(owner.address, addrs[5].address, 1);
+
+        await expect(staker.harvest([1])).to.be.revertedWith('TokenIsMoved(1)');
+        await expect(staker.harvest([1, 2, 3, 4, 5])).to.be.revertedWith('TokenIsMoved(1)');
+        await expect(staker.harvest([2, 1, 3, 4, 5])).to.be.revertedWith('TokenIsMoved(1)');
+      });
+
+      it('should fail if token is transfered out and back', async () => {
+        await nft.transferFrom(owner.address, addrs[5].address, 1);
+        await nft.connect(addrs[5]).transferFrom(addrs[5].address, owner.address, 1);
+
+        await expect(staker.harvest([1])).to.be.revertedWith('TokenIsMoved(1)');
+        await expect(staker.harvest([1, 2, 3, 4, 5])).to.be.revertedWith('TokenIsMoved(1)');
+        await expect(staker.harvest([2, 1, 3, 4, 5])).to.be.revertedWith('TokenIsMoved(1)');
       });
     });
   });

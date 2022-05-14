@@ -40,7 +40,7 @@ contract NFTStaker is Ownable {
         prizePerSec = prizePerSec_;
     }
 
-    /// no contract 
+    /// no contract
     modifier noContract() {
         if (tx.origin != msg.sender) revert ContractsNotAllowed();
         _;
@@ -59,10 +59,7 @@ contract NFTStaker is Ownable {
             if (currentOwnership.burned) revert TokenIsBurned(tokenId);
 
             // revert if already staked
-            // TODO: check if the first `if` is needed
-            if (stakes[tokenId].owner == msg.sender) {
-                if (stakes[tokenId].startTimestamp == currentOwnership.startTimestamp) revert AlreadyStaked(tokenId);
-            }
+            if (stakes[tokenId].startTimestamp == currentOwnership.startTimestamp) revert AlreadyStaked(tokenId);
 
             stakes[tokenId].owner = msg.sender;
             stakes[tokenId].startTimestamp = currentOwnership.startTimestamp;
@@ -112,12 +109,6 @@ contract NFTStaker is Ownable {
         uint256 amount = uint256(currentTimestamp - stakes[tokenId].lastHarvestTimestamp) * prizePerSec;
 
         return amount;
-    }
-
-    /// Withdraw funds
-    function withdraw() external onlyOwner {
-        (bool success, ) = msg.sender.call{value: address(this).balance}("");
-        if (!success) revert WithdrawFailed();
     }
 
     /// Withdraw ERC20

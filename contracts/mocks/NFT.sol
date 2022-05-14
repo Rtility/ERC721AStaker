@@ -11,6 +11,10 @@ contract NFT is ERC721AQueryable {
         _mint(msg.sender, quantity);
     }
 
+    function burn(uint256 tokenId) external {
+        _burn(tokenId);
+    }
+
     function _startTokenId() internal pure override returns (uint256) {
         return 1;
     }
