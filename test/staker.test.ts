@@ -221,5 +221,21 @@ describe('Staker', () => {
         await expect(staker.harvest([2, 1, 3, 4, 5])).to.be.revertedWith('TokenIsMoved(1)');
       });
     });
+
+    context('stakedTokensOfOwner', async () => {
+      const bigNumberArr = (...arr: Number[]) => arr.map((num) => BigNumber.from(num));
+      beforeEach(async () => {
+        // stake with gaps
+        await staker.stake([1]);
+        await staker.stake([3, 4]);
+        await staker.stake([2, 5]);
+      });
+
+      it('should return correct value', async () => {
+        const expected = bigNumberArr(1, 2, 3, 4, 5);
+        const res = await staker.stakedTokensOfOwner(owner.address, 0, 100);
+        expect(res).to.be.eql(expected);
+      });
+    });
   });
 });

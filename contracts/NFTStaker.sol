@@ -17,6 +17,7 @@ contract NFTStaker is Ownable {
     error NotEnoughFundsInTheContract();
     error WithdrawFailed();
     error ContractsNotAllowed();
+    error InvalidQueryRange();
 
     struct StakedToken {
         address owner;
@@ -67,6 +68,29 @@ contract NFTStaker is Ownable {
                 stakes[tokenId].lastHarvestTimestamp = uint48(block.timestamp);
             }
         }
+    }
+
+    function stakedTokensOfOwner(
+        address owner,
+        uint256 start,
+        uint256 stop
+    ) external view returns (uint256[] memory) {
+        if (start >= stop) revert InvalidQueryRange();
+
+        uint256[] memory result = new uint256[](stop - start);
+
+        uint256 idx;
+        for (uint256 i = start; i != stop; ++i) {
+            if (stakes[i].owner == owner) {
+                result[idx++] = i;
+            }
+        }
+
+        assembly {
+            mstore(result, idx)
+        }
+
+        return result;
     }
 
     function harvest(uint256[] calldata tokenIds) external noContract {
