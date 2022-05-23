@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { BigNumber } from 'ethers';
 
 // deploy contract function
 async function deployContract(contractName: string, ...callData: any): Promise<any> {
@@ -18,4 +19,8 @@ const lastBlockTimestamp = async (): Promise<number> => {
   return (await ethers.provider.getBlock('latest')).timestamp;
 };
 
-export { deployContract, increaseBlockTimestamp, lastBlockTimestamp };
+const bigNumberArr = (...arr: Number[]) => arr.map((num) => BigNumber.from(num));
+
+const ZERO_ADDRESS = ethers.constants.AddressZero;
+
+export { deployContract, increaseBlockTimestamp, lastBlockTimestamp, bigNumberArr, ZERO_ADDRESS };

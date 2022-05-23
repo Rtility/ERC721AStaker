@@ -70,8 +70,9 @@ contract NFTStaker is Ownable {
         }
     }
 
+    /// not intended for external contract call, off-chain use only.
     function stakedTokensOfOwner(
-        address owner,
+        address tokenOwner,
         uint256 start,
         uint256 stop
     ) external view returns (uint256[] memory) {
@@ -80,9 +81,9 @@ contract NFTStaker is Ownable {
         uint256[] memory result = new uint256[](stop - start);
 
         uint256 idx;
-        for (uint256 i = start; i != stop; ++i) {
-            if (stakes[i].owner == owner) {
-                result[idx++] = i;
+        for (uint256 tokenId = start; tokenId != stop; ++tokenId) {
+            if (isStillStakedForOwner(tokenOwner, tokenId)) {
+                result[idx++] = tokenId;
             }
         }
 
@@ -91,6 +92,33 @@ contract NFTStaker is Ownable {
         }
 
         return result;
+    }
+
+    /// not intended for external contract call, off-chain use only.
+    function areStaked(address tokenOwner, uint256[] calldata tokenIds) external view returns (bool[] memory) {
+        uint256 tokenIdsLength = tokenIds.length;
+        bool[] memory result = new bool[](tokenIdsLength);
+
+        for (uint256 i; i != tokenIdsLength; ++i) {
+            result[i] = isStillStakedForOwner(tokenOwner, tokenIds[i]);
+        }
+
+        return result;
+    }
+
+    function isStillStaked(uint256 tokenId) external view returns (bool) {
+        uint48 startTimestamp = stakes[tokenId].startTimestamp;
+        return
+            startTimestamp != 0 &&
+            uint48(IERC721AQueryable(nft).explicitOwnershipOf(tokenId).startTimestamp) == startTimestamp;
+    }
+
+    function isStillStakedForOwner(address tokenOwner, uint256 tokenId) public view returns (bool) {
+        return
+            tokenOwner != address(0) &&
+            stakes[tokenId].owner == tokenOwner &&
+            uint48(IERC721AQueryable(nft).explicitOwnershipOf(tokenId).startTimestamp) ==
+            stakes[tokenId].startTimestamp;
     }
 
     function harvest(uint256[] calldata tokenIds) external noContract {
