@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "description": "NFT (ERC721A) Soft Staker",
   "scripts": {
-    "compile": "hardhat compile",
-    "test": "hardhat test",
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
     "test:gas": "REPORT_GAS=true npx hardhat test",
-    "deploy": "hardhat deploy",
-    "node": "hardhat node"
+    "deploy": "npx hardhat deploy",
+    "node": "npx hardhat node"
   },
   "repository": {
     "type": "git",
