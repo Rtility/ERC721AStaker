@@ -36,7 +36,7 @@
     "@typechain/hardhat": "^4.0.0",
     "@types/chai": "^4.3.0",
     "@types/mocha": "^9.1.0",
-    "@types/node": "^17.0.17",
+    "@types/node": "^18.8.3",
     "chai": "^4.3.6",
     "dotenv": "^16.0.0",
     "erc721a": "3.3.0",
